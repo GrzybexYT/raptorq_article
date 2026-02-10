@@ -224,11 +224,23 @@
             To understand why this isn't magic, we have to stop looking at packets as "chunks of a file" and start looking at them as <strong>Linear Equations</strong>.
         </p>
         <p>
-            In a standard file transfer, if I send you the first 1KB block of a file, I am sending you the equation:
+            Let's make it concrete. Suppose your file is four bytes: <code>A=5</code>, <code>B=3</code>, <code>C=7</code>, <code>D=2</code>. Instead of sending those four values directly, you generate encoded packets by XORing subsets:
+        </p>
+        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-12 font-mono text-sm text-slate-300 leading-relaxed overflow-x-auto">
+            <span class="text-slate-500">Packet 1:</span> A ⊕ C = 5 ⊕ 7 = <span class="text-cyan-400">2</span> &nbsp;&nbsp;<span class="text-slate-600">[1,0,1,0]</span><br/>
+            <span class="text-slate-500">Packet 2:</span> B ⊕ C ⊕ D = 3 ⊕ 7 ⊕ 2 = <span class="text-cyan-400">6</span> &nbsp;&nbsp;<span class="text-slate-600">[0,1,1,1]</span><br/>
+            <span class="text-slate-500">Packet 3:</span> A ⊕ B = 5 ⊕ 3 = <span class="text-cyan-400">6</span> &nbsp;&nbsp;<span class="text-slate-600">[1,1,0,0]</span><br/>
+            <span class="text-slate-500">Packet 4:</span> A ⊕ B ⊕ C ⊕ D = 5 ⊕ 3 ⊕ 7 ⊕ 2 = <span class="text-cyan-400">3</span> &nbsp;&nbsp;<span class="text-slate-600">[1,1,1,1]</span>
+        </div>
+        <p>
+            Each packet is a linear equation over the unknowns <code>[A,B,C,D]</code>, and the binary vector says which symbols participate. The receiver who collects any four independent packets can solve the system by Gaussian elimination, XOR-ing rows until each unknown is isolated, and recover <code>A=5, B=3, C=7, D=2</code>. It doesn't matter <em>which</em> four arrived, only that they're linearly independent.
+        </p>
+        <p>
+            This is the core reframing: every packet is an equation, and recovering a file is solving a linear system. In a standard file transfer, each packet is a trivial equation:
             <br/><span class="block text-center my-10 font-mono text-cyan-400 text-2xl bg-white/[0.03] py-8 rounded-[2rem] border border-white/10 backdrop-blur-xl shadow-2xl">1·x₁ + 0·x₂ + ... + 0·xₖ = Packet₁</span>
         </p>
         <p>
-            In RaptorQ, we treat the source data as a vector of unknowns \([x_1, x_2, ..., x_K]\). We generate an infinite stream of encoded packets. Each packet is the XOR sum of a random subset of the source symbols.
+            In RaptorQ, we treat the source data as a vector of unknowns \([x_1, x_2, ..., x_K]\) and generate an infinite stream of encoded packets, each one the XOR of a random subset of source symbols.
         </p>
 
         <!-- Interactive XOR Matrix Viz -->
@@ -309,13 +321,17 @@
 	    <section class="editorial-container">
 	        <h2 class="section-title">The Coupon Collector's Tax</h2>
         <p>
-            If the idea is just "send random linear equations," why didn't we do this 50 years ago? It's called <strong>Random Linear Network Coding</strong>, and it works perfectly. But there is a catch.
+            If the idea is just "send random linear equations," why didn't we do this 50 years ago? It's called <strong>Random Linear Network Coding</strong>, and it works perfectly. But there is a catch, and it creates the central dilemma of fountain code design:
+        </p>
+        <p class="text-2xl font-bold text-center text-white my-14 leading-tight">
+            Dense equations = solvable but slow.<br/>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">Sparse equations = fast but broken.</span>
         </p>
         <p>
-            Solving a dense system of \(K\) linear equations takes \(O(K^3)\) time (Gaussian Elimination). If your file has 50,000 blocks, \(50,000^3\) is 125 trillion operations. Your CPU would melt before the video started playing.
+            Dense: solving a system of \(K\) random linear equations takes \(O(K^3)\) time (Gaussian Elimination). If your file has 50,000 blocks, \(50,000^3\) is 125 trillion operations. Your CPU would melt before the video started playing.
         </p>
         <p>
-            So, we optimize. We make the equations <strong>sparse</strong>. Instead of XORing 50% of the symbols, we XOR only a few (say, 5 or 10). This makes solving fast. But it introduces a new villain: the <strong>Coupon Collector Problem</strong>.
+            So we make the equations <strong>sparse</strong>: instead of XORing 50% of the symbols, we XOR only a few (say, 5 or 10). This makes solving fast. But sparsity introduces a new villain: the <strong>Coupon Collector Problem</strong>.
         </p>
         <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-12">
             <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">A Subtle Failure Mode</div>
@@ -343,20 +359,20 @@
                 \(P(x_i \text{ untouched}) \approx \left(1 - \frac{1}{K}\right)^{dn} \approx e^{-dn/K}\)
             </div>
             <p class="text-slate-300 text-sm leading-relaxed mb-4">
-                If you aim for \(n \approx K\) (tiny overhead), that becomes \(\approx e^{-d}\), a <em>constant</em>—it doesn't go to zero.
+                If you aim for \(n \approx K\) (tiny overhead), that becomes \(\approx e^{-d}\), a <em>constant</em>; it doesn't go to zero.
             </p>
             <p class="text-slate-300 text-sm leading-relaxed mb-0">
-                With \(d = 5\), you should expect about \(e^{-5} \approx 0.7\%\) of your symbols to have <strong>zero appearances</strong>. That's ~70 symbols in a block of 10,000 that are <em>information-theoretically unrecoverable</em>—no algorithm on Earth can recover what was never constrained. To drive the expected untouched count below 1, you need \(d \gtrsim \ln K\). That's the log tax.
+                With \(d = 5\), you should expect about \(e^{-5} \approx 0.7\%\) of your symbols to have <strong>zero appearances</strong>. That's ~70 symbols in a block of 10,000 that are <em>information-theoretically unrecoverable</em>. No algorithm on Earth can recover what was never constrained. To drive the expected untouched count below 1, you need \(d \gtrsim \ln K\). That's the log tax.
             </p>
         </div>
 
 	        <p>
 	            That \(\log K\) factor is a tax. In the simplest coupon-collector baseline (each packet reveals one uniformly random symbol), the expected draws to see all \(K\) coupons is
-	            \(K \cdot H_K \approx K(\ln K + \gamma)\). For \(K=10{,}000\), that's about \(97{,}900\) singletons. If each packet mixes a constant number of symbols, you improve the constant, but the \(\log K\) tail remains.
+	            \(K \cdot H_K \approx K(\ln K + \gamma)\). For \(K=1{,}000\), that's roughly 7,500 draws, a <strong>7.5× overhead</strong> to collect all 1,000 coupons. For \(K=10{,}000\), it's about 97,900. If each packet mixes a constant number of symbols, you improve the constant, but the \(\log K\) tail remains.
 	            We want something that behaves like \(K + O(1)\), not \(K \log K\).
 	        </p>
 	        <p>
-	            This seemed like a fundamental law of nature: you can have <strong>Speed</strong> (sparse) or you can have <strong>Efficiency</strong> (dense), but not both.
+	            The whole story of fountain code design is threading this needle. Dense equations give you solvability but \(O(K^3)\) decoding. Sparse equations give you speed but the coupon collector's log tax on overhead. It seemed like a fundamental tradeoff.
 	        </p>
 	    </section>
 
@@ -384,7 +400,8 @@
 		                \(\rho(d) = 1/(d(d-1))\) &nbsp;&nbsp;for \(d = 2,3,\dots,K\)
 		            </div>
 		            <p class="text-slate-400 text-sm leading-relaxed mt-6 mb-0">
-		                In practice the ideal soliton is too fragile (variance kills the cascade), so LT codes use a <strong>Robust Soliton</strong> distribution: it adds a buffer so the decoder has a steady supply of easy degree-1 packets.
+		                In practice the Ideal Soliton is too fragile. It maintains an expected ripple of exactly one degree-1 check at each step, like draining a bathtub where the inflow is tuned to <em>exactly</em> match the outflow. But real random processes fluctuate. One unlucky dry spell and the ripple hits zero: the cascade stalls, the decoder is stuck, and no amount of waiting fixes it. The Ideal Soliton is a high-wire act with no net.<br/><br/>
+		                LT codes fix this with a <strong>Robust Soliton</strong> distribution that adds a deliberate buffer, aiming for a ripple of 5–10 instead of 1, so random fluctuations don't kill the decode.
 		            </p>
 		        </div>
 
@@ -477,7 +494,7 @@
             Instead of trying to recover 100% of the symbols using the sparse fountain code (which incurs an expensive tail), we only ask the fountain code to recover <strong>97%</strong> of the symbols.
         </p>
         <p>
-            Getting to 97% is easy. It costs \(O(K)\). The curve is steep at the beginning. It's only the "tail"—the last few stubborn symbols—that is expensive. So we simply truncate the tail.
+            Getting to 97% is easy. It costs \(O(K)\). The curve is steep at the beginning. It's only the "tail", the last few stubborn symbols, that is expensive. So we simply truncate the tail.
         </p>
 	        <p>
 	            But wait, we need 100% of the file. So, <em>before</em> we start the fountain process, we take our source file and apply a <strong>Precode</strong>. We expand the file by a tiny amount (say, 3%) using a high-density erasure code.
@@ -624,10 +641,23 @@
         </div>
 
         <p>
-            But what if the peeling stalls? What if every remaining equation depends on at least 2 unknowns?
+            But what if the peeling stalls? What if every remaining equation depends on at least 2 unknowns? Consider a concrete example of a <strong>stopping set</strong>:
         </p>
+        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-12">
+            <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">A Stuck System (The 2-Core)</div>
+            <div class="font-mono text-sm text-slate-300 leading-relaxed">
+                y₁ = A ⊕ B<br/>
+                y₂ = B ⊕ C<br/>
+                y₃ = C ⊕ D<br/>
+                y₄ = D ⊕ E<br/>
+                y₅ = E ⊕ A
+            </div>
+            <p class="text-slate-400 text-sm leading-relaxed mt-4 mb-0">
+                Five equations, five unknowns, every equation degree-2. No equation has a single unknown; peeling can't start. The equations form a cycle: A→B→C→D→E→A. This is the <strong>2-core</strong>, and pure peeling is helpless against it.
+            </p>
+        </div>
 	        <p>
-	            This is where RaptorQ introduces <strong>Inactivation Decoding</strong>. Instead of giving up, the algorithm picks a variable, marks it as "Inactive" (essentially saying, "I'll deal with you later"), and moves it to a separate list. This breaks the deadlock and lets peeling continue.
+	            This is where RaptorQ introduces <strong>Inactivation Decoding</strong>. Instead of giving up, the algorithm picks a variable, say <code>A</code>, marks it as "Inactive" (essentially saying, "I'll deal with you later"), and treats it as a known quantity for now. Suddenly <code>y₁ = A ⊕ B</code> has only one unknown (<code>B</code>), which triggers a cascade that peels the entire cycle. At the end, only <code>A</code> remains, solved via a tiny dense system.
 	        </p>
 		        <p>
 		            At the end, you are left with a tiny "core" of Inactive variables. You solve this small core using expensive Gaussian Elimination. Because the core is tiny (thanks to the Precode), the cubic cost is confined to a small \(p \times p\) solve, not a full \(K \times K\) one.
@@ -641,6 +671,9 @@
 	                <li><strong>Back-substitute:</strong> push the solved core back into the sparse system and finish peeling.</li>
 	            </ol>
 	        </div>
+	        <p>
+	            If this sounds familiar, it should. It's the same <strong>fast path / slow path</strong> pattern that shows up throughout systems engineering: 90–99% of the work is sparse and local (fast). A small amount of global structure handles the rare bad cases (slow). RaptorQ applies that pattern to linear algebra.
+	        </p>
 		    </section>
 
 	    <div class="section-divider"></div>
@@ -733,17 +766,17 @@ y = XOR(C[i] for i in indices) // most coefficients are 0/1 in practice</pre>
 	            <div class="bg-black/50 border border-white/5 rounded-2xl p-6">
 	                <h4 class="text-white font-bold mb-3">Code inefficiency overhead</h4>
 	                <p class="text-sm text-slate-400 leading-relaxed mb-0">
-	                    How many <em>extra</em> symbols beyond \(K\) must the receiver collect because the code isn't a perfect MDS fountain? For RaptorQ, this is typically 0, 1, or 2 symbols—not a percentage of \(K\). That's the jaw-drop.
+	                    How many <em>extra</em> symbols beyond \(K\) must the receiver collect because the code isn't a perfect MDS fountain? For RaptorQ, this is typically 0, 1, or 2 symbols, not a percentage of \(K\).
 	                </p>
 	            </div>
 	        </div>
 	        <p>
-	            RaptorQ's reputation for "tiny overhead" is about the second number. The code's intrinsic inefficiency is essentially <strong>constant</strong>—a handful of extra symbols, independent of \(K\).
+	            RaptorQ's reputation for "tiny overhead" is about the second number. The code's intrinsic inefficiency is essentially <strong>constant</strong>, a handful of extra symbols independent of \(K\). Those extra symbols aren't buying you more <em>information</em> about the source data. You already have enough information in \(K\) packets. What you're buying is <strong>rank</strong>: escaping the rare event that your \(K\) equations happen to be linearly dependent.
 	        </p>
 
 	        <h3 class="text-xl font-bold text-white mt-16 mb-6">Random Rank Is Your Friend</h3>
 	        <p>
-	            Here's the clean piece of math that demystifies the dramatic drop. If you pick a random \(K \times K\) matrix over GF(\(q\)), the probability it's full rank is:
+	            A clean piece of math demystifies the dramatic drop. If you pick a random \(K \times K\) matrix over GF(\(q\)), the probability it's full rank is:
 	        </p>
 	        <div class="text-center my-8 font-mono text-cyan-400 text-lg bg-white/5 py-4 rounded-xl border border-white/5">
 	            \(P(\text{full rank}) = \prod_{j=1}^{K} \left(1 - q^{-j}\right)\)
@@ -793,9 +826,15 @@ y = XOR(C[i] for i in indices) // most coefficients are 0/1 in practice</pre>
 	    <section class="editorial-container">
 	        <h2 class="section-title">How We Got Here</h2>
 	        <p>
-	            RaptorQ isn't a single clever trick; it's the polished endpoint of a sequence of tricks that kept attacking the same tradeoff: <em>overhead vs. speed</em>.
+	            RaptorQ is the polished endpoint of a sequence of tricks that kept attacking the same tradeoff: <em>overhead vs. speed</em>.
 	        </p>
 	        <div class="mt-10 border-l border-white/10 pl-6 space-y-10">
+	            <div>
+	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">1997 · Tornado Codes (Luby, Mitzenmacher, Shokrollahi, Spielman)</div>
+	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
+	                    The first linear-time erasure codes, using layered bipartite graph structures (expander graphs) with peeling decoders. Fixed-rate, not rateless, but they proved that sparse graph codes could match the performance of dense codes at a fraction of the computational cost. The key precursor.
+	                </p>
+	            </div>
 	            <div>
 	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">1998 · Digital Fountain</div>
 	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
