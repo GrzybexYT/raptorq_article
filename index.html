@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaptorQ: The Black Magic of Liquid Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Crimson+Pro:ital,wght@0,200..900;1,200..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --bg: #020203;
+                --text-main: #e2e8f0;
+                --text-muted: #94a3b8;
+                --accent-blue: #3b82f6;
+                --accent-purple: #a855f7;
+                --accent-cyan: #06b6d4;
+                --accent-emerald: #10b981;
+            }
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: var(--bg);
+                color: var(--text-main);
+                font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+                @apply antialiased selection:bg-cyan-500/30 selection:text-cyan-50;
+            }
+            h1, h2, h3, h4, h5 {
+                font-family: 'Bricolage Grotesque', sans-serif;
+                @apply tracking-tight leading-none text-white;
+            }
+            p {
+                @apply text-[1.1rem] leading-relaxed text-slate-300 mb-6 font-[450];
+            }
+            strong {
+                @apply text-white font-semibold;
+            }
+            code {
+                font-family: 'JetBrains Mono', monospace;
+                @apply text-cyan-400 bg-cyan-950/30 px-1.5 py-0.5 rounded text-[0.9em] font-medium border border-cyan-500/10;
+            }
+            .math-inline { 
+                font-family: 'Crimson Pro', serif; 
+                @apply italic text-lg px-1 text-purple-300;
+            }
+            .link-hover {
+                @apply border-b border-slate-700 hover:border-cyan-400 hover:text-cyan-400 transition-colors duration-300;
+            }
+        }
+        @layer components {
+            .editorial-container {
+                @apply max-w-[800px] mx-auto px-6 lg:px-8 relative z-10;
+            }
+            .section-divider {
+                @apply w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-24;
+            }
+            .display-title {
+                font-size: clamp(3.5rem, 8vw, 7rem);
+                @apply font-bold mb-8 text-white leading-[0.9];
+            }
+            .section-title {
+                font-size: clamp(2rem, 4vw, 3.5rem);
+                @apply font-bold mb-12 mt-24 text-white flex items-center gap-4;
+            }
+            .section-title::before {
+                content: '';
+                @apply w-3 h-12 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full inline-block;
+            }
+            .insight-card {
+                @apply my-16 p-10 rounded-3xl border border-white/5 bg-[#08080a] relative overflow-hidden;
+                box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+            }
+            .insight-card::after {
+                content: '';
+                @apply absolute inset-0 border border-white/5 rounded-3xl pointer-events-none;
+            }
+            .callout {
+                @apply border-l-4 border-purple-500/50 pl-6 py-2 my-10 italic text-slate-400 text-xl font-serif bg-gradient-to-r from-purple-500/5 to-transparent rounded-r-xl;
+            }
+            .viz-container {
+                @apply w-full my-20 rounded-3xl border border-white/10 bg-[#050507] relative overflow-hidden min-h-[500px] flex flex-col shadow-2xl;
+            }
+            .viz-header {
+                @apply p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] backdrop-blur-sm;
+            }
+            .btn-action {
+                @apply px-6 py-3 bg-white text-black font-bold text-xs uppercase tracking-widest rounded-full hover:bg-cyan-400 hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)];
+            }
+            .btn-secondary {
+                @apply px-6 py-3 bg-transparent border border-white/20 text-white font-bold text-xs uppercase tracking-widest rounded-full hover:border-white hover:bg-white/5 transition-all duration-300;
+            }
+            .sidebar-note {
+                @apply text-sm text-slate-500 border-l border-slate-800 pl-4 ml-4 italic my-4 block;
+            }
+        }
+        /* Custom Matrix Animations */
+        .matrix-row { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .row-enter { animation: slideIn 0.5s forwards; }
+        .row-solve { animation: flashGreen 1s forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes flashGreen { 0% { background-color: rgba(34, 197, 94, 0.2); } 100% { background-color: transparent; } }
+    </style>
+</head>
+<body>
+
+    <!-- Scroll Progress -->
+    <div class="fixed top-0 left-0 h-1 w-full bg-gradient-to-r from-cyan-500 via-purple-500 to-blue-500 z-50" id="progress-bar" style="transform: scaleX(0); transform-origin: 0 0; will-change: transform;"></div>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex flex-col justify-center relative overflow-hidden pb-20">
+        <div id="hero-canvas" class="absolute inset-0 opacity-30 z-0"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#020203]/80 to-[#020203] z-0"></div>
+        
+        <div class="editorial-container text-center pt-32 relative z-10">
+            <div class="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] font-mono text-cyan-400 tracking-[0.2em] uppercase backdrop-blur-md">
+                <span class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                Protocol Research / RFC 6330
+            </div>
+            <h1 class="display-title">
+                The Black Magic of<br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Liquid Data.</span>
+            </h1>
+	        <p class="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto leading-relaxed mt-8">
+	                How RaptorQ turns rigid files into a probabilistic stream, defying the laws of data gravity with <span class="text-white font-medium">O(1)</span> extra packets (often just <span class="text-white font-medium">+2</span>).
+	        </p>
+        </div>
+        
+        <div class="absolute bottom-10 left-0 w-full flex justify-center animate-bounce opacity-30">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+    </section>
+
+    <!-- Intro -->
+    <article class="editorial-container">
+        <p class="drop-cap first-letter:text-8xl first-letter:font-bold first-letter:text-cyan-500 first-letter:float-left first-letter:mr-6 first-letter:mt-[-16px] first-letter:leading-[0.8]">
+            Suppose you are trying to stream a 4K video to a Mars rover. The round-trip latency is 40 minutes. Or perhaps you are broadcasting a critical firmware update to a million cars simultaneously over a patchy cellular network.
+        </p>
+        <p>
+            The traditional way we move data—TCP—is fundamentally a conversation. "I sent packet 4." "I didn't get packet 4." "Okay, resending packet 4." "Okay, got it." This conversational model works fine for loading a webpage, but it falls apart at scale or extreme latency. It requires a feedback loop. It requires the sender to know exactly what the receiver is missing.
+        </p>
+        <p>
+            But imagine a different world. Imagine you don't care about "Packet #4." Imagine you could turn your file into a <strong class="text-cyan-200">mathematical liquid</strong>. You open the valve and spray packets at the receiver. The receiver is just a bucket. It doesn't matter <em>which</em> drops of liquid land in the bucket. It doesn't matter if half the spray blows away in the wind.
+        </p>
+	        <p>
+	            As soon as the bucket is full—roughly \(K+\epsilon\) drops (a tiny overhead), not a particular set—the receiver reconstructs the data.
+	        </p>
+        
+        <div class="insight-card group">
+            <div class="absolute -right-20 -top-20 opacity-10 group-hover:opacity-20 transition-opacity duration-700 rotate-12 scale-150">
+                <svg width="400" height="400" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            </div>
+	            <h3 class="text-2xl font-bold text-white mb-4">The Impossible Promise</h3>
+	            <p class="text-slate-400 text-base mb-0">
+	                This isn't sci-fi. It's <strong>RaptorQ (RFC 6330)</strong>. The RFC has a SHALL-level decoder requirement: if you receive encoding symbols whose IDs are chosen uniformly at random, the <em>average</em> decode failure rate must be at most 1/100 when receiving \(K'\) symbols, 1/10,000 at \(K'+1\), and 1/1,000,000 at \(K'+2\).<br/><br/>
+	                (Here \(K'\) is the padded block size used internally by the spec; it's very close to your intuitive "number of source symbols" \(K\).) At \(K \approx 10{,}000\), two extra symbols is about <strong>0.02%</strong> overhead.
+	            </p>
+	        </div>
+    </article>
+
+    <div class="section-divider"></div>
+
+    <!-- Section 1: Linear Algebra -->
+    <section class="editorial-container">
+        <h2 class="section-title">Packets Are Equations</h2>
+        <p>
+            To understand why this isn't magic, we have to stop looking at packets as "chunks of a file" and start looking at them as <strong>Linear Equations</strong>.
+        </p>
+        <p>
+            In a standard file transfer, if I send you the first 1KB block of a file, I am sending you the equation:
+            <br/><span class="block text-center my-6 font-mono text-cyan-400 text-xl bg-white/5 py-4 rounded-xl border border-white/5">1·x₁ + 0·x₂ + ... + 0·xₖ = Packet₁</span>
+        </p>
+        <p>
+            This is a very simple equation. It solves \(x_1\) immediately. But it's fragile. If you lose it, you know nothing about \(x_1\).
+        </p>
+        <p>
+            In RaptorQ, we treat the source data as a vector of unknowns \([x_1, x_2, ..., x_K]\). We generate an infinite stream of encoded packets. Each packet is the XOR sum of a random subset of the source symbols.
+        </p>
+        <p>
+            When you receive a packet, you aren't receiving "Piece #5." You are receiving a constraint. If you have \(K\) unknowns, you simply need to collect \(K\) linearly independent equations. Once you have them, you solve the system, and pop! Out come the original symbols.
+        </p>
+
+        <!-- Interactive XOR Matrix Viz -->
+        <div class="viz-container" id="viz-matrix">
+            <div class="viz-header">
+                <h4 class="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                    <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                    Interactive 01: The Matrix View
+                </h4>
+                <div class="flex gap-2">
+                    <button onclick="matrixViz.step()" class="btn-action">Add Equation</button>
+                    <button onclick="matrixViz.reset()" class="btn-secondary">Reset</button>
+                </div>
+            </div>
+            <div class="flex-1 p-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div id="matrix-render-area" class="font-mono text-sm leading-relaxed overflow-hidden min-h-[250px]"></div>
+                <div>
+                    <div class="mb-6">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">System Status</div>
+                        <div id="rank-status" class="text-4xl font-bold text-slate-700 transition-colors duration-500">Rank: 0 / 4</div>
+                    </div>
+	                    <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+	                        We are solving \(Ax = b\) over GF(2). In this field, addition is XOR. In the real RFC 6330 scheme, most work stays XOR-cheap, but a small "insurance" component uses GF(256) to improve rank.
+	                    </p>
+                    <div class="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20 text-sm text-blue-300">
+                        <strong class="block mb-1 text-blue-200">The Rank-Nullity Theorem</strong>
+                        Every new <em>linearly independent</em> packet reduces the Nullity (uncertainty) of the system. When Nullity reaches 0, the solution space collapses to a single point: your file.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+	        <p>
+	            This explains the <strong>fungibility</strong>. Order doesn't matter because the order in which you write down equations doesn't change the solution. Every new packet provides a bit more information, constraining the possible values of the source symbols.
+	        </p>
+	    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Interlude: The Three Promises -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">What RaptorQ Promises</h2>
+	        <p>
+	            If you compress RFC 6330 into three adjectives, you get: <strong>rateless</strong>, <strong>systematic</strong>, and <strong>near-MDS</strong>.
+	        </p>
+	        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+	            <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-3 text-lg">Rateless</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed mb-0">
+	                    The sender can generate as many repair packets as needed. If the receiver is on a noisy link, it just keeps collecting. If the link is clean, it stops early. No fixed \(n\). No negotiation loop.
+	                </p>
+	            </div>
+	            <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-3 text-lg">Systematic</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed mb-0">
+	                    The original data symbols are part of the encoding stream. In the common case of low loss, the receiver just gets the source symbols and never runs a decoder.
+	                </p>
+	            </div>
+	            <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-3 text-lg">Near-MDS</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed mb-0">
+	                    It behaves almost like an optimal erasure code: you need only slightly more than the block size. The RFC even pins down a steep reliability curve (for \(K'\), the padded block size): \(\le 1\%\) failure at \(K'\), \(\le 0.01\%\) at \(K'+1\), \(\le 10^{-6}\) at \(K'+2\).
+	                </p>
+	            </div>
+	        </div>
+	        <p class="text-slate-400 text-sm leading-relaxed mt-10">
+	            The important nuance: it is not saying <em>every</em> adversarially-chosen set of \(K\) packets works. It says <em>almost any</em> set of \(K\) or \(K+\epsilon\) packets works when packets are generated according to the standard's deterministic randomness.
+	        </p>
+	    </section>
+
+	    <!-- Section 2: The Logarithm Tax -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">The Coupon Collector's Tax</h2>
+        <p>
+            If the idea is just "send random linear equations," why didn't we do this 50 years ago? It's called <strong>Random Linear Network Coding</strong>, and it works perfectly. But there is a catch.
+        </p>
+        <p>
+            Solving a dense system of \(K\) linear equations takes \(O(K^3)\) time (Gaussian Elimination). If your file has 50,000 blocks, \(50,000^3\) is 125 trillion operations. Your CPU would melt before the video started playing.
+        </p>
+        <p>
+            So, we optimize. We make the equations <strong>sparse</strong>. Instead of XORing 50% of the symbols, we XOR only a few (say, 5 or 10). This makes solving fast. But it introduces a new villain: the <strong>Coupon Collector Problem</strong>.
+        </p>
+        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-12">
+            <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">A Subtle Failure Mode</div>
+            <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                Sparsity doesn't just create a coverage problem. It can also create <strong>rank deficiency</strong>: you can receive \(K\) sparse equations and still not be able to solve, because they're accidentally dependent.
+            </p>
+            <div class="font-mono text-sm text-slate-300 leading-relaxed">
+                e₁ = A ⊕ B &nbsp;&nbsp;[1,1,0,0]<br/>
+                e₂ = C ⊕ D &nbsp;&nbsp;[0,0,1,1]<br/>
+                e₃ = A ⊕ C &nbsp;&nbsp;[1,0,1,0]<br/>
+                e₄ = B ⊕ D &nbsp;&nbsp;[0,1,0,1]<br/>
+                <span class="text-slate-500">Row1 ⊕ Row2 ⊕ Row3 ⊕ Row4 = 0 → dependent.</span>
+            </div>
+        </div>
+        <div class="callout">
+            With constant-degree random mixing, you need \(O(K \log K)\) packets to cover every symbol with high probability.
+        </div>
+	        <p>
+	            That \(\log K\) factor is a tax. In the simplest coupon-collector baseline (each packet reveals one uniformly random symbol), the expected draws to see all \(K\) coupons is
+	            \(K \cdot H_K \approx K(\ln K + \gamma)\). For \(K=10{,}000\), that's about \(97{,}900\) singletons. If each packet mixes a constant number of symbols, you improve the constant, but the \(\log K\) tail remains.
+	            We want something that behaves like \(K + O(1)\), not \(K \log K\).
+	        </p>
+	        <p>
+	            This seemed like a fundamental law of nature: you can have <strong>Speed</strong> (sparse) or you can have <strong>Efficiency</strong> (dense), but not both.
+	        </p>
+	    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Section 2.5: LT Codes -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">LT Codes: The Ripple</h2>
+	        <p>
+	            LT codes (Luby, 2002) were the first practical fountain codes, and their core move is surprisingly simple: <strong>don't pick a fixed degree</strong>.
+	            For each packet, you choose a degree \(d\) (how many symbols to XOR together) from a carefully shaped distribution, then XOR those \(d\) symbols.
+	        </p>
+
+		        <div class="insight-card">
+		            <h3 class="text-2xl font-bold text-white mb-6">The Soliton Intuition</h3>
+		            <p class="text-slate-300">
+		                A degree-\(d\) equation becomes <em>useful</em> when exactly \(d-1\) of its neighbors are already known, because then it collapses to a single unknown.
+		                If roughly \(K/d\) symbols remain unknown late in decoding, degree-\(d\) packets are the ones that are "about to release".
+		            </p>
+		            <p class="text-slate-400 text-sm leading-relaxed mb-6">
+		                The idealized version of this idea is the <strong>Ideal Soliton</strong> degree law:
+		            </p>
+		            <div class="bg-black/50 border border-white/5 rounded-2xl p-6 font-mono text-sm text-slate-300 leading-relaxed overflow-x-auto">
+		                \(\rho(1) = 1/K\)<br/>
+		                \(\rho(d) = 1/(d(d-1))\) &nbsp;&nbsp;for \(d = 2,3,\dots,K\)
+		            </div>
+		            <p class="text-slate-400 text-sm leading-relaxed mt-6 mb-0">
+		                In practice the ideal soliton is too fragile (variance kills the cascade), so LT codes use a <strong>Robust Soliton</strong> distribution: it adds a buffer so the decoder has a steady supply of easy degree-1 packets.
+		            </p>
+		        </div>
+
+		        <div class="viz-container" id="viz-degree-ripple">
+		            <div class="viz-header">
+		                <h4 class="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2">
+		                    <span class="w-2 h-2 bg-purple-400 rounded-full"></span>
+		                    Interactive 02: Degrees &amp; Ripple
+		                </h4>
+		                <div class="flex gap-2">
+		                    <button onclick="degreeRippleViz.simulate()" class="btn-action">Simulate</button>
+		                    <button onclick="degreeRippleViz.resample()" class="btn-secondary">Resample</button>
+		                </div>
+		            </div>
+		            <div class="p-6 border-b border-white/5 bg-white/[0.01]">
+		                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		                    <div>
+		                        <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Distribution</div>
+		                        <select id="degree-ripple-dist" onchange="degreeRippleViz.setDist(this.value)" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/30">
+		                            <option value="rfc6330">RFC 6330 Degree Table (RaptorQ)</option>
+		                            <option value="robust">Robust Soliton (LT)</option>
+		                            <option value="ideal">Ideal Soliton</option>
+		                        </select>
+		                    </div>
+		                    <div class="grid grid-cols-1 gap-4">
+		                        <div>
+		                            <div class="flex justify-between items-center mb-2">
+		                                <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">K (variables)</div>
+		                                <div id="degree-ripple-k-label" class="text-[10px] font-mono text-slate-400"></div>
+		                            </div>
+		                            <input id="degree-ripple-k" type="range" min="200" max="2000" step="100" value="800" oninput="degreeRippleViz.setK(parseInt(this.value,10))" class="w-full accent-cyan-400">
+		                        </div>
+		                        <div>
+		                            <div class="flex justify-between items-center mb-2">
+		                                <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">Overhead</div>
+		                                <div id="degree-ripple-overhead-label" class="text-[10px] font-mono text-slate-400"></div>
+		                            </div>
+		                            <input id="degree-ripple-overhead" type="range" min="0" max="20" step="1" value="5" oninput="degreeRippleViz.setOverhead(parseInt(this.value,10))" class="w-full accent-purple-400">
+		                        </div>
+		                        <div>
+		                            <div class="flex justify-between items-center mb-2">
+		                                <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">Robust c</div>
+		                                <div id="degree-ripple-c-label" class="text-[10px] font-mono text-slate-400"></div>
+		                            </div>
+		                            <input id="degree-ripple-c" type="range" min="2" max="10" step="1" value="5" oninput="degreeRippleViz.setC(parseInt(this.value,10))" class="w-full accent-emerald-400">
+		                        </div>
+		                    </div>
+		                </div>
+		            </div>
+		            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+		                <div class="bg-black/40 border border-white/5 rounded-2xl p-4">
+		                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3">Degree Distribution</div>
+		                    <div id="degree-ripple-bar" class="h-[260px]"></div>
+		                </div>
+		                <div class="bg-black/40 border border-white/5 rounded-2xl p-4">
+		                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3">Ripple During Peeling</div>
+		                    <div id="degree-ripple-line" class="h-[260px]"></div>
+		                </div>
+		            </div>
+		            <div class="p-6 border-t border-white/5 text-sm text-slate-500 text-center">
+		                <span id="degree-ripple-stats"></span>
+		            </div>
+		        </div>
+
+		        <p>
+		            The decoding picture is graph-theoretic. Draw a bipartite graph: variables on the left (unknown symbols), checks on the right (received packets), and edges for "this packet touches that symbol".
+		            The <strong>ripple</strong> is the set of degree-1 check nodes at any moment.
+		        </p>
+	        <p>
+	            Peeling succeeds as long as the ripple never hits zero. If it does, you're in a <strong>stopping set</strong> (a <strong>2-core</strong>): every remaining packet has degree \(\ge 2\), so nothing is directly solvable.
+	        </p>
+	        <p>
+	            LT codes make this work often, but the final stretch is still expensive: to drive the failure probability very low using <em>only</em> peeling, you pay a growing overhead term.
+	            In classic analyses of robust-soliton LT codes, the number of received symbols looks like \(K + O(\sqrt{K}\log^2(K/\delta))\) to achieve failure probability \(\delta\): a vanishing fraction as \(K\) grows, but not a constant-number-of-packets guarantee.
+	            That's the tail Raptor codes eliminate.
+	        </p>
+	    </section>
+
+	    <!-- Section 3: The Wildly Clever Idea -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">The "Aha!" Moment</h2>
+        <p>
+            This is where <strong>RaptorQ</strong> pulls its "black magic" trick. The insight is so simple it's almost embarrassing:
+        </p>
+        <p class="text-3xl font-bold text-center text-white my-16 leading-tight">
+            Don't try to make the fountain code perfect.<br/>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Make it sloppy, then clean up the mess.</span>
+        </p>
+        <p>
+            Instead of trying to recover 100% of the symbols using the sparse fountain code (which incurs an expensive tail), we only ask the fountain code to recover <strong>97%</strong> of the symbols.
+        </p>
+        <p>
+            Getting to 97% is easy. It costs \(O(K)\). The curve is steep at the beginning. It's only the "tail"—the last few stubborn symbols—that is expensive. So we simply truncate the tail.
+        </p>
+	        <p>
+	            But wait, we need 100% of the file. So, <em>before</em> we start the fountain process, we take our source file and apply a <strong>Precode</strong>. We expand the file by a tiny amount (say, 3%) using a high-density erasure code.
+	        </p>
+	        <p>
+	            In RaptorQ, that precode is layered: a sparse LDPC-style part (cheap XOR constraints) plus a small, denser HDPC "insurance" part (where the spec leans on GF(256) to crush rank failures).
+	        </p>
+
+        <div class="viz-container" id="viz-precode">
+            <div class="viz-header">
+                <h4 class="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                    <span class="w-2 h-2 bg-purple-400 rounded-full"></span>
+                    Interactive 03: The Precode Repair
+                </h4>
+            </div>
+            <div class="flex-1 relative p-8 bg-gradient-to-b from-[#0a0a0c] to-[#050507]">
+                <!-- SVG Visualization of Precode -->
+                <svg id="precode-svg" width="100%" height="400" viewBox="0 0 800 400" class="overflow-visible"></svg>
+                <div class="absolute bottom-6 right-6 flex gap-2">
+                     <button onclick="precodeViz.animate()" class="btn-action">Run Simulation</button>
+                </div>
+            </div>
+        </div>
+
+        <p>
+            The workflow becomes a two-stage rocket:
+        </p>
+        <ol class="list-decimal list-inside space-y-4 text-slate-300 ml-4 mb-12 border-l border-white/10 pl-6">
+            <li><strong>The Precode (Insurance):</strong> Expand source \(K\) to Intermediate \(L\) (adding ~3% structured redundancy).</li>
+            <li><strong>The Fountain (Delivery):</strong> Spray packets generated from \(L\) using a fast, sparse code (LT Code).</li>
+            <li><strong>Decoding Phase 1:</strong> The receiver collects packets and uses the fast sparse decoder. It stalls at roughly 97%.</li>
+            <li><strong>Decoding Phase 2:</strong> The Precode kicks in. Because the Intermediate file has internal structure, we can mathematically deduce the missing 3% from the 97% we found.</li>
+        </ol>
+	        <p>
+	            We moved the "hard work" from the probabilistic layer (where it costs overhead) to a deterministic layer (where it is cheap because the missing count is small).
+	        </p>
+	    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Section 3.5: Intermediate Symbols -->
+		    <section class="editorial-container">
+		        <h2 class="section-title">What's Actually Being Solved</h2>
+		        <p>
+		            One detail that's easy to miss: RaptorQ doesn't directly solve for your raw source symbols.
+	            It first defines a slightly larger set of <strong>intermediate symbols</strong> \(C[0],\dots,C[L-1]\), then constructs equations that let the decoder recover those \(L\) unknowns.
+	        </p>
+	        <p>
+	            Very roughly, the standard builds a system with:
+	        </p>
+	        <ul class="list-disc list-inside space-y-2 text-slate-300 ml-4 mb-10">
+	            <li><strong>LT constraints (sparse):</strong> the fountain layer equations (peel-friendly).</li>
+	            <li><strong>LDPC constraints (sparse):</strong> a web of cheap "insurance" equations.</li>
+	            <li><strong>HDPC constraints (denser):</strong> a small set of heavy-hitting equations where GF(256) improves rank.</li>
+	        </ul>
+		        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 overflow-x-auto">
+		            <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-4">A Mental Model (Not Exact RFC Layout)</div>
+		            <pre class="font-mono text-sm text-slate-300 leading-relaxed mb-0">+------------------------------------+
+| HDPC constraints (H rows, GF(256))  |
+| LDPC constraints (S rows, GF(2))    |
+| LT   constraints (≈K rows, GF(2))   |
++------------------------------------+
+                L unknowns</pre>
+		        </div>
+		        <p class="text-slate-400 text-sm leading-relaxed mt-8">
+		            Most operations stay XOR-cheap (GF(2)). The GF(256) part is deliberately isolated: it costs more per operation, but it buys you a dramatic reduction in "unlucky" rank deficiency.
+		        </p>
+		    </section>
+
+		    <div class="section-divider"></div>
+
+		    <!-- Section 3.6: Toy Walkthrough -->
+		    <section class="editorial-container">
+		        <h2 class="section-title">Walkthrough: A Toy Decode</h2>
+		        <p>
+		            Let's do a complete end-to-end decode in miniature. We'll use \(K=4\) one-byte source symbols \(A,B,C,D\), plus one precode parity symbol \(P\).
+		            The receiver will <em>never</em> receive \(C\) directly, yet will still reconstruct it.
+		        </p>
+		        <p class="sidebar-note">
+		            This is not the exact RFC 6330 matrix layout. It's the same algebra (XOR over GF(2)) with small numbers so you can see every step.
+		        </p>
+
+		        <div class="viz-container" id="viz-toy-decode">
+		            <div class="viz-header">
+		                <h4 class="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2">
+		                    <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
+		                    Interactive 04: End-to-End Toy Decode
+		                </h4>
+		                <div class="flex gap-2">
+		                    <button onclick="toyDecodeViz.prev()" class="btn-secondary">Back</button>
+		                    <button onclick="toyDecodeViz.next()" class="btn-action">Next</button>
+		                    <button onclick="toyDecodeViz.reset()" class="btn-secondary">Reset</button>
+		                    <button onclick="toyDecodeViz.auto()" class="btn-action">Auto</button>
+		                </div>
+		            </div>
+		            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+		                <div class="lg:col-span-2 bg-black/40 border border-white/5 rounded-2xl p-4">
+		                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Step</div>
+		                    <div id="toy-decode-step" class="text-slate-200 text-sm leading-relaxed"></div>
+		                </div>
+		                <div class="bg-black/40 border border-white/5 rounded-2xl p-4">
+		                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Symbols</div>
+		                    <div id="toy-decode-symbols" class="font-mono text-sm text-slate-200"></div>
+		                </div>
+		                <div class="bg-black/40 border border-white/5 rounded-2xl p-4">
+		                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Equations</div>
+		                    <div id="toy-decode-equations" class="font-mono text-sm text-slate-200"></div>
+		                </div>
+		            </div>
+		            <div class="p-6 border-t border-white/5 text-sm text-slate-500 text-center">
+		                <span id="toy-decode-status"></span>
+		            </div>
+		        </div>
+		    </section>
+
+		    <!-- Section 4: Inactivation Decoding -->
+		    <section class="editorial-container">
+		        <h2 class="section-title">Peeling & Inactivation</h2>
+        <p>
+            We've solved the overhead problem. Now, how do we solve the speed problem? How do we solve 50,000 equations in milliseconds?
+        </p>
+        <p>
+            We use a <strong>Peeling Decoder</strong> (also known as Belief Propagation). It works like Sudoku.
+        </p>
+        <p>
+            You look for an equation with only <strong>one unknown</strong>. You solve it instantly. Then you "peel" that known value out of all other equations (by XORing it into them). This might reduce a complex equation to a single-unknown equation. You solve that one. The process cascades.
+        </p>
+        
+        <div class="viz-container" id="viz-peeling">
+            <div class="viz-header">
+                <h4 class="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full"></span>
+                    Interactive 05: The Peeling Cascade
+                </h4>
+                <div class="flex gap-2">
+                     <button onclick="peelingViz.step()" class="btn-action">Peel Step</button>
+                     <button onclick="peelingViz.reset()" class="btn-secondary">Reset</button>
+                </div>
+            </div>
+            <div id="peeling-canvas" class="flex-1 w-full h-[400px]"></div>
+            <div class="p-6 border-t border-white/5 text-center text-sm text-slate-500">
+                Click "Peel Step" to find degree-1 packets (yellow) and resolve their source blocks (green).
+            </div>
+        </div>
+
+        <p>
+            But what if the peeling stalls? What if every remaining equation depends on at least 2 unknowns?
+        </p>
+	        <p>
+	            This is where RaptorQ introduces <strong>Inactivation Decoding</strong>. Instead of giving up, the algorithm picks a variable, marks it as "Inactive" (essentially saying, "I'll deal with you later"), and moves it to a separate list. This breaks the deadlock and lets peeling continue.
+	        </p>
+		        <p>
+		            At the end, you are left with a tiny "core" of Inactive variables. You solve this small core using expensive Gaussian Elimination. Because the core is tiny (thanks to the Precode), the cubic cost is confined to a small \(p \times p\) solve, not a full \(K \times K\) one.
+		        </p>
+	        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-12">
+	            <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-4">Inactivation Decoding In 4 Phases</div>
+	            <ol class="list-decimal list-inside space-y-3 text-slate-300 ml-2 text-sm leading-relaxed mb-0">
+	                <li><strong>Triangulate (Peel):</strong> greedily eliminate degree-1 checks; this solves the easy majority in linear time.</li>
+	                <li><strong>Inactivate:</strong> when the ripple dies (2-core), pick a variable to "park" as unknown and keep peeling around it.</li>
+	                <li><strong>Dense solve:</strong> run Gaussian elimination on the inactive core only (this is where the GF(256) insurance matters).</li>
+	                <li><strong>Back-substitute:</strong> push the solved core back into the sparse system and finish peeling.</li>
+	            </ol>
+	        </div>
+		    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Section 5: The Engineering Tricks -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">The Engineering Tricks</h2>
+	        <p>
+	            The story so far is clean: sparse equations for speed, a precode for the tail, inactivation for stalls. The reason it works in production is the <em>engineering</em> around those ideas.
+	        </p>
+	        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+	            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-4 text-xl">Systematic Encoding</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed">
+	                    The first \(K\) encoding symbols are the source symbols themselves: \(y_i = x_i\) for \(0 \le i &lt; K\). If the channel is clean, the receiver doesn't decode at all. Repair symbols are only sent when reality demands them.
+	                </p>
+	            </div>
+	            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-4 text-xl">One Integer of Metadata</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed">
+	                    A repair packet doesn't carry a big coefficient vector. It carries an <strong>Encoding Symbol ID</strong> (ESI). Sender and receiver run the same deterministic generator (which internally maps ESI → ISI) to reconstruct <em>which</em> intermediate symbols were combined. Broadcast-friendly, coordination-free.
+	                </p>
+	            </div>
+	            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-4 text-xl">Padding to \(K'\) (Systematic Indices)</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed">
+	                    RFC 6330 quietly pads your block from \(K\) to \(K'\) using a lookup table (Table 2): it adds \(K' - K\) <em>padding symbols</em> that are never transmitted.
+	                    This lets encoder and decoder reuse fixed parameters (like \(S,H,W,P\), with several chosen as primes) and keeps behavior interoperable across implementations.
+	                    It also explains why transport uses ESI, while the internal algebra uses ISI (repair ISIs are shifted by \(K' - K\)).
+	                </p>
+	            </div>
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">A Degree Table, Not Pure Randomness</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    RFC 6330 hardcodes a degree distribution (implemented as a threshold table on a small PRNG value) heavily weighted toward low degrees (2 and 3 dominate). The expected LT degree is about <strong>4.8</strong>. With permanently-inactivated symbols, each repair symbol touches about <strong>7</strong> intermediates on average: constant work per packet.
+		                </p>
+		            </div>
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">Permanent Inactivation</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    Peeling works until it doesn't. RaptorQ makes the dense core predictable by pre-selecting a small set of intermediate symbols (the PI symbols) to be treated as inactivated from the start, so the remaining sparse system peels cleanly. It's a controlled expense: a tiny cubic solve to avoid a catastrophic stall.
+		                </p>
+		            </div>
+		        </div>
+		        <p class="mt-12">
+		            The key to making this interoperable is that "randomness" is <em>deterministic</em>. A repair packet carries an integer ID (the <strong>ESI</strong> / Encoding Symbol ID). Both sender and receiver run the same tuple generator keyed by that ID (and the derived internal ISI) to reconstruct the packet's neighbor pattern.
+		        </p>
+		        <div class="bg-black/50 border border-white/5 rounded-2xl p-6 my-10 overflow-x-auto">
+		            <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-4">How One ID Becomes An Equation (Simplified)</div>
+		            <pre class="font-mono text-sm text-slate-300 leading-relaxed mb-0">id  = ESI
+isi = id (source), or id + (K' - K) (repair)   // skips padding ISIs
+d   = degree_from_table(isi)   // mostly 2,3,4...
+b,a = tuple_params(isi)        // stepping params
+
+indices = []
+for t in 0..d-1:
+  indices.push(b)
+  b = (b + a) mod L
+
+y = XOR(C[i] for i in indices) // most coefficients are 0/1 in practice</pre>
+		        </div>
+		        <p class="text-slate-400 text-sm leading-relaxed">
+		            In the actual RFC, the tuple generator also selects a small number of "PI" (permanently inactivated) neighbors in a separate range, specifically to control the dense core. The core idea is the same: an ID deterministically expands into a sparse neighbor set.
+		        </p>
+		        <p class="text-slate-400 text-sm leading-relaxed">
+		            The point isn't the exact constants; it's the shape: the <em>header</em> stays tiny (an ID), while the receiver still knows the exact linear equation each packet represents.
+		        </p>
+		    </section>
+
+		    <div class="section-divider"></div>
+
+	    <!-- Section 6: A Brief History -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">How We Got Here</h2>
+	        <p>
+	            RaptorQ isn't a single clever trick; it's the polished endpoint of a sequence of tricks that kept attacking the same tradeoff: <em>overhead vs. speed</em>.
+	        </p>
+	        <div class="mt-10 border-l border-white/10 pl-6 space-y-10">
+	            <div>
+	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">1998 · Digital Fountain</div>
+	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
+	                    The original "fountain" metaphor: an endless spray of packets so receivers can join late, suffer loss, and still finish without feedback.
+	                </p>
+	            </div>
+	            <div>
+	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">2002 · LT Codes (Luby)</div>
+	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
+	                    Sparse XOR equations + a tuned degree distribution so a peeling decoder can run fast. Revolutionary, but the last few symbols still force a non-constant tail overhead if you want vanishing failure probability.
+	                </p>
+	            </div>
+	            <div>
+	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">2006 · Raptor Codes (Shokrollahi)</div>
+	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
+	                    The breakthrough: add a high-rate precode so the fountain layer only needs to get you "almost there". The log tail disappears; linear-time behavior becomes practical.
+	                </p>
+	            </div>
+	            <div>
+	                <div class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-2">2011 · RaptorQ (RFC 6330)</div>
+	                <p class="text-slate-300 text-sm leading-relaxed mb-0">
+	                    Engineering refinements for real deployments: systematic encoding, deterministic symbol generation from an ID, inactivation decoding, and GF(256) insurance where rank matters.
+	                </p>
+	            </div>
+	        </div>
+	    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Section 7: Comparisons -->
+	    <section class="editorial-container">
+	        <h2 class="section-title">RaptorQ vs. The Alternatives</h2>
+	        <p>
+	            The best way to appreciate RaptorQ is to see what it refuses to be.
+	        </p>
+	        <div class="overflow-x-auto my-12">
+	            <table class="min-w-[700px] w-full text-sm text-slate-300 border border-white/10 rounded-2xl overflow-hidden">
+	                <thead class="bg-white/5 text-slate-400 uppercase tracking-widest text-[10px]">
+	                    <tr>
+	                        <th class="text-left p-4">Scheme</th>
+	                        <th class="text-left p-4">Overhead</th>
+	                        <th class="text-left p-4">Speed</th>
+	                        <th class="text-left p-4">Notes</th>
+	                    </tr>
+	                </thead>
+	                <tbody class="divide-y divide-white/5">
+	                    <tr class="hover:bg-white/[0.02]">
+	                        <td class="p-4 font-semibold text-white">Reed-Solomon</td>
+	                        <td class="p-4">0% (MDS)</td>
+	                        <td class="p-4">Slower decode at large \(K\)</td>
+	                        <td class="p-4">Great guarantees, fixed-rate, can become quadratic-ish in practice.</td>
+	                    </tr>
+	                    <tr class="hover:bg-white/[0.02]">
+	                        <td class="p-4 font-semibold text-white">Dense RLNC</td>
+	                        <td class="p-4">Tiny</td>
+	                        <td class="p-4">Too slow</td>
+	                        <td class="p-4">Recovery like random matrices, but encoding touches many symbols; decoding is dense elimination.</td>
+	                    </tr>
+	                    <tr class="hover:bg-white/[0.02]">
+	                        <td class="p-4 font-semibold text-white">Pure LT</td>
+	                        <td class="p-4">\(O(\sqrt{K}\log^2 K)\) extra</td>
+	                        <td class="p-4">Fast</td>
+	                        <td class="p-4">Peeling-friendly; the best-known theory bounds still need growing extra symbols (and the tail is expensive) without a second stage.</td>
+	                    </tr>
+	                    <tr class="hover:bg-white/[0.02]">
+	                        <td class="p-4 font-semibold text-white">RaptorQ</td>
+	                        <td class="p-4">Tiny</td>
+	                        <td class="p-4">Fast</td>
+	                        <td class="p-4">Sparse almost everywhere; dense work quarantined to a small core; standardized for interoperability.</td>
+	                    </tr>
+	                </tbody>
+	            </table>
+	        </div>
+
+	        <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	            <h4 class="text-white font-bold mb-4 text-xl">When RaptorQ Is The Right Tool</h4>
+	            <ul class="list-disc list-inside space-y-2 text-slate-300 ml-2 text-sm leading-relaxed mb-0">
+	                <li><strong>Broadcast/multicast:</strong> one sender, many receivers, each with different losses.</li>
+	                <li><strong>High latency:</strong> retransmissions are expensive or impossible.</li>
+	                <li><strong>Heterogeneous links:</strong> some receivers lose 2%, others lose 40%; the sender can't pick a single redundancy level.</li>
+	                <li><strong>Anytime delivery:</strong> you want receivers to join mid-stream and still complete.</li>
+	            </ul>
+	        </div>
+
+	        <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors mt-8">
+	            <h4 class="text-white font-bold mb-4 text-xl">Glossary (The Variables You Keep Seeing)</h4>
+	            <ul class="list-disc list-inside space-y-2 text-slate-300 ml-2 text-sm leading-relaxed mb-0">
+	                <li><strong>\(T\):</strong> symbol size (bytes per symbol); you split the file into \(K\) symbols of \(T\) bytes.</li>
+	                <li><strong>\(K\):</strong> number of source symbols (the thing you conceptually want back).</li>
+	                <li><strong>\(K'\):</strong> the padded/extended source block size used internally by RFC 6330 (very close to \(K\)).</li>
+	                <li><strong>\(L\):</strong> number of intermediate symbols after precoding (the thing the decoder actually solves for).</li>
+	                <li><strong>\(y\):</strong> an encoding symbol (a received packet payload), i.e. one linear equation.</li>
+	                <li><strong>\(d\):</strong> degree of a packet (how many symbols it touches).</li>
+	                <li><strong>ISI/ESI:</strong> the integer ID that lets the receiver reconstruct the equation for a repair packet.</li>
+	                <li><strong>Ripple / 2-core:</strong> the set of degree-1 checks, and the residual stuck core when none exist.</li>
+	            </ul>
+	        </div>
+
+	        <div class="insight-card !my-0 !p-8 !bg-slate-900/50 hover:bg-slate-900 transition-colors mt-8">
+	            <h4 class="text-white font-bold mb-4 text-xl">Integrity (RaptorQ Is Not Crypto)</h4>
+	            <p class="text-sm text-slate-400 leading-relaxed mb-0">
+	                RaptorQ is designed for random erasures, not adversaries. A single corrupted packet can poison the decoded output.
+	                In real systems you typically pair it with an object hash (and often a signature), and sometimes packet authentication (e.g., TESLA-style schemes) so receivers can discard bad packets early.
+	            </p>
+	        </div>
+	    </section>
+
+	    <div class="section-divider"></div>
+
+	    <!-- Section 8: The Math Underpinnings -->
+	    <section class="editorial-container pb-32">
+	        <h2 class="section-title">The Deep Math</h2>
+		        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">The Rank-Nullity Theorem</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    The governing law of fountain decoding is: \(\mathrm{rank}(A) + \mathrm{nullity}(A) = K\), where \(K\) is the number of unknown source symbols.<br/><br/>
+		                    Every linearly independent packet you receive increases rank by 1 and reduces nullity by 1. When nullity reaches 0, the solution is unique. RaptorQ is an efficient way to drive nullity to 0 without doing a full \(O(K^3)\) dense solve.
+		                </p>
+		            </div>
+	            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+	                <h4 class="text-white font-bold mb-4 text-xl">Shamir's Secret Sharing</h4>
+	                <p class="text-sm text-slate-400 leading-relaxed">
+	                    RaptorQ is the spiritual sibling of Shamir's Secret Sharing. Shamir uses polynomial interpolation (finding a curve that hits \(K\) points). RaptorQ uses sparse linear systems. Both rely on the principle that \(K\) pieces of information define a structure of size \(K\). Shamir is secure but slow; RaptorQ is insecure but blazing fast.
+	                </p>
+	            </div>
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">Finite Fields: GF(256)</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    Most sparse codes fail because of "unlucky" dependencies (rank deficiency). RaptorQ mitigates this by doing its dense insurance work (the HDPC precode) in <strong>GF(256)</strong> rather than GF(2).<br/><br/>
+		                    For a random \(K \times K\) matrix over GF(\(q\)): \(P(\text{full rank}) = \prod_{j=1}^{K} (1 - q^{-j})\). Over GF(2), this tends to about <strong>0.288</strong> (so ~71% singular). Over GF(256), it tends to about <strong>0.996</strong> (so ~0.4% singular), and every extra independent equation tends to crush failure by a factor of ~\(1/256\).
+		                </p>
+		            </div>
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">Stopping Sets (The 2-Core)</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    The peeling decoder fails when the residual bipartite graph has no degree-1 checks. This residual subgraph is the <strong>2-core</strong>: every remaining check node has degree \(\ge 2\), so no equation directly reveals a variable.
+		                    RaptorQ's whole architecture is built to keep this core small, then solve it with inactivation + the precode's extra constraints.
+		                </p>
+		            </div>
+		            <div class="insight-card !my-0 !bg-slate-900/50 hover:bg-slate-900 transition-colors">
+		                <h4 class="text-white font-bold mb-4 text-xl">Spectral Theory (Where It Actually Helps)</h4>
+		                <p class="text-sm text-slate-400 leading-relaxed">
+		                    You don't compute eigenvalues to decode RaptorQ. But spectral/expander intuition <em>does</em> show up in the design and analysis of LDPC-style precodes: good expansion means information propagates quickly across the constraint graph, so a small missing set can be inferred from the rest.
+		                </p>
+		            </div>
+		        </div>
+		    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/10 py-24 bg-[#020203]">
+        <div class="editorial-container text-center">
+            <h2 class="text-4xl font-bold text-white mb-8">Built for the Infinite.</h2>
+            <p class="text-slate-500 mb-12 max-w-lg mx-auto">
+                RaptorQ sits at the intersection of Linear Algebra, Graph Theory, and practical Engineering. It powers the 3GPP MBMS standard, ATSC 3.0, and ROUTE/FLUTE-style multicast delivery.
+            </p>
+            <div class="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm font-mono uppercase tracking-widest">
+                 <a href="https://datatracker.ietf.org/doc/html/rfc6330" target="_blank" class="text-slate-600 hover:text-cyan-400 transition-colors">RFC 6330</a>
+                 <a href="https://doi.org/10.1109/SFCS.2002.1181950" target="_blank" class="text-slate-600 hover:text-cyan-400 transition-colors">LT Codes (2002)</a>
+                 <a href="https://doi.org/10.1109/TIT.2006.874390" target="_blank" class="text-slate-600 hover:text-cyan-400 transition-colors">Raptor Codes (2006)</a>
+                 <a href="raptorq_article_research.md" class="text-slate-600 hover:text-cyan-400 transition-colors">Research Notes</a>
+                 <a href="01_xor_encoding_decoding.py" class="text-slate-600 hover:text-cyan-400 transition-colors">XOR Demo</a>
+                 <a href="02_lt_code_simulation.py" class="text-slate-600 hover:text-cyan-400 transition-colors">LT Demo</a>
+                 <a href="03_raptorq_precoding.py" class="text-slate-600 hover:text-cyan-400 transition-colors">Precode Demo</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Logic -->
+    <script src="visualizations.js"></script>
+    <script>
+        // Progress Bar (rAF throttled + transform: avoids layout on every scroll)
+        (() => {
+            const bar = document.getElementById('progress-bar');
+            if (!bar) return;
+
+            let ticking = false;
+            let lastScrollY = 0;
+
+            const update = () => {
+                ticking = false;
+
+                const doc = document.documentElement;
+                const height = Math.max(1, doc.scrollHeight - doc.clientHeight);
+                const ratio = Math.max(0, Math.min(1, lastScrollY / height));
+
+                bar.style.transform = `scaleX(${ratio})`;
+            };
+
+            const onScroll = () => {
+                lastScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(update);
+                }
+            };
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        })();
+
+        // Initialize animations on load
+        window.addEventListener('load', () => {
+            if(window.initHero) window.initHero();
+            if(window.matrixViz) window.matrixViz.init();
+            if(window.degreeRippleViz) window.degreeRippleViz.init();
+            if(window.precodeViz) window.precodeViz.init();
+            if(window.toyDecodeViz) window.toyDecodeViz.init();
+            if(window.peelingViz) window.peelingViz.init();
+        });
+    </script>
+</body>
+</html>
