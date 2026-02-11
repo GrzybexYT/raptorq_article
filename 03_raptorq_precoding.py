@@ -155,7 +155,7 @@ class SimplePrecode:
 K = 10  # Source symbols
 P = 4   # Parity symbols (40% redundancy)
 
-print(f"\nParameters:")
+print("\nParameters:")
 print(f"  K = {K} source symbols")
 print(f"  P = {P} parity symbols")
 print(f"  Precode rate = K/(K+P) = {K/(K+P)*100:.1f}%")
@@ -163,7 +163,7 @@ print(f"  Precode rate = K/(K+P) = {K/(K+P)*100:.1f}%")
 # Create precode
 precode = SimplePrecode(K, P)
 
-print(f"\n--- Parity-Check Structure ---")
+print("\n--- Parity-Check Structure ---")
 for i, neighbors in enumerate(precode.parity_neighbors):
     print(f"  Parity P{i} = XOR of sources {neighbors}")
 
@@ -178,7 +178,7 @@ print(f"  Sources (positions 0-{K-1}): {intermediate[:K]}")
 print(f"  Parities (positions {K}-{K+P-1}): {intermediate[K:]}")
 
 # Verify parity equations
-print(f"\n--- Verifying Parity Equations ---")
+print("\n--- Verifying Parity Equations ---")
 for i, neighbors in enumerate(precode.parity_neighbors):
     computed = 0
     for idx in neighbors:
@@ -226,7 +226,7 @@ def demonstrate_recovery(precode, intermediate, erase_count):
     if success and correct:
         print(f"  ✓ Successfully recovered all {K} source symbols!")
     elif success:
-        print(f"  ⚠ All symbols recovered but some incorrect")
+        print("  ⚠ All symbols recovered but some incorrect")
     else:
         unrecovered = sum(1 for r in recovered if r is None)
         print(f"  ✗ Failed to recover {unrecovered} source symbols")

@@ -113,7 +113,7 @@ K = 20  # Number of source symbols
 C = 0.05  # Robust soliton parameter
 delta = 0.5  # Failure probability bound
 
-print(f"\nParameters:")
+print("\nParameters:")
 print(f"  K = {K} source symbols")
 print(f"  c = {C} (robust soliton parameter)")
 print(f"  delta = {delta} (failure probability bound)")
@@ -139,8 +139,8 @@ for i in range(1, min(11, K + 1)):
     marker = " <-- Added ripple mass" if diff > 0.001 and i < 5 else ""
     print(f"  {i:2d}   |   {rho[i]:.6f}   |    {mu[i]:.6f}   | {diff:+.6f}{marker}")
 
-print(f"\nNote: Robust soliton shifts probability mass toward lower degrees")
-print(f"      This ensures more degree-1 symbols are available for decoding.")
+print("\nNote: Robust soliton shifts probability mass toward lower degrees")
+print("      This ensures more degree-1 symbols are available for decoding.")
 
 # =============================================================================
 # PART 2: ENCODING PROCESS
@@ -296,8 +296,8 @@ def belief_propagation_decode(encoding_symbols, K, verbose=True):
         
         if len(ripple) == 0:
             if verbose:
-                print(f"\n✗ DECODING FAILED!")
-                print(f"  No degree-1 symbols available")
+                print("\n✗ DECODING FAILED!")
+                print("  No degree-1 symbols available")
                 print(f"  Recovered: {recovered_count}/{K} symbols")
             return None, ripple_history
         
@@ -329,7 +329,7 @@ def belief_propagation_decode(encoding_symbols, K, verbose=True):
         sym['neighbors'].clear()
     
     if verbose:
-        print(f"\n✓ DECODING SUCCESS!")
+        print("\n✓ DECODING SUCCESS!")
         print(f"  All {K} source symbols recovered in {iteration} iterations")
     
     return recovered, ripple_history
@@ -365,14 +365,14 @@ for i, size in enumerate(ripple[:20]):
     print(f"    {i+1:3d}   |     {size:3d}     | {status} {bar}")
 
 if len(ripple) > 20:
-    print(f"    ...    |     ...     | ...")
+    print("    ...    |     ...     | ...")
     for i in range(len(ripple) - 5, len(ripple)):
         size = ripple[i]
         status = "✓" if size > 0 else "✗"
         bar = "●" * min(size, 20)
         print(f"    {i+1:3d}   |     {size:3d}     | {status} {bar}")
 
-print(f"\n--- Ripple Statistics ---")
+print("\n--- Ripple Statistics ---")
 print(f"  Minimum ripple size: {min(ripple)}")
 print(f"  Maximum ripple size: {max(ripple)}")
 print(f"  Average ripple size: {np.mean(ripple):.2f}")
@@ -470,7 +470,7 @@ print(f"\n--- Success Rate Comparison (K={K}, 20% overhead) ---")
 ideal_rate, robust_rate = compare_distributions(K, 0.20, num_trials=10)
 print(f"  Ideal Soliton:   {ideal_rate*100:5.1f}%")
 print(f"  Robust Soliton:  {robust_rate*100:5.1f}%")
-print(f"\nThe robust soliton significantly improves success rate!")
+print("\nThe robust soliton significantly improves success rate!")
 
 # =============================================================================
 # SUMMARY
