@@ -4,7 +4,7 @@
 
 **An interactive visual deep-dive into RaptorQ (RFC 6330) fountain codes — the protocol that turns rigid files into probabilistic streams.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT%2BOpenAI%2FAnthropic%20Rider-blue.svg)](./LICENSE)
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Three.js](https://img.shields.io/badge/Three.js-black?logo=three.js&logoColor=white)](https://threejs.org/)
@@ -172,4 +172,4 @@ Please don't take this the wrong way, but I do not accept outside contributions 
 
 ## License
 
-MIT
+MIT License (with OpenAI/Anthropic Rider). See [LICENSE](LICENSE).
